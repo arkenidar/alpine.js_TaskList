@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jQuery TaskList</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+  <link rel="stylesheet" href="css/jquery.css">
+</head>
+
+<body>
+  <h1>TaskList App (jQuery Slim)</h1>
+  <p style="text-align: center; margin-bottom: 15px; color: #666;">
+    <small>
+      Compare:
+      <a href="index.html" style="color: #4A90E2;">Alpine.js</a> |
+      <a href="vanilla-js.html" style="color: #4A90E2;">Vanilla JS</a> |
+      <a href="README.md" style="color: #4A90E2;">Docs</a>
+    </small>
+  </p>
+  <div id="task-list-container"></div>
+
+  <script>
+    // Manual Reactivity Pattern (inspired by arkenidar's list-app.js)
+    // Data stored in DOM element using jQuery .data()
+    // Explicit function calls trigger updates
+
+    function list_setup($container, list_content) {
+      // Store data in container (like arkenidar's main_node.data_content)
+      $container.data('list-content', list_content);
+      $container.data('filter', 'all');
+
+      // Create filter buttons
+      const $filterDiv = $('<div class="filter-buttons">');
+      $filterDiv.append(
+        $('<button>').text('All').on('click', function () {
+          list_visually_filter($container, 'all');
+        })
+      );
+      $filterDiv.append(
+        $('<button>').text('To Do').on('click', function () {
+          list_visually_filter($container, 'todo');
+        })
+      );
+      $filterDiv.append(
+        $('<button>').text('Done').on('click', function () {
+          list_visually_filter($container, 'done');
+        })
+      );
+
+      // Create add task section
+      const $addDiv = $('<div class="add-task">');
+      const $input = $('<input>')
+        .attr('type', 'text')
+        .attr('placeholder', 'Add a new task...')
+        .on('keydown', function (e) {
+          if (e.key === 'Enter') {
+            list_add_task($container, $(this).val());
+          }
+        });
+      const $addBtn = $('<button>').text('Add').on('click', function () {
+        list_add_task($container, $input.val());
+      });
+      $addDiv.append($input, $addBtn);
+
+      // Create list container
+      const $list = $('<ul class="task-list">');
+
+      // Append all to container
+      $container.append($filterDiv, $addDiv, $list);
+
+      // Initial render
+      list_render($container);
+    }
+
+    function list_render($container) {
+      // Get data from container
+      const listContent = $container.data('list-content');
+      const $list = $container.find('.task-list');
+
+      // Clear list
+      $list.empty();
+
+      // Render each item
+      if (listContent.length === 0) {
+        $list.append($('<li class="empty-state">').text('No tasks to show'));
+      } else {
+        listContent.forEach(function (item, index) {
+          const $item = list_item_create(item, index, $container);
+          $list.append($item);
+        });
+      }
+
+      // Apply current filter
+      list_visually_filter($container, $container.data('filter'));
+    }
+
+    function list_item_create(item_data, index, $container) {
+      const text = item_data[0];
+      const status = item_data[1]; // "done" or "todo"
+
+      const $li = $('<li class="task-item">');
+
+      // Checkbox
+      const $checkbox = $('<input type="checkbox">')
+        .prop('checked', status === 'done')
+        .on('change', function () {
+          list_checkbox_change(index, $container);
+        });
+
+      // Text span (click to edit)
+      const $text = $('<span class="task-text">')
+        .text(text)
+        .toggleClass('completed', status === 'done')
+        .on('click', function () {
+          const originalText = text;
+          const $input = $('<input class="task-edit-input">')
+            .val(text)
+            .on('blur', function () {
+              list_text_edit(index, $(this).val(), $container);
+              list_render($container);
+            })
+            .on('keydown', function (e) {
+              if (e.key === 'Enter') {
+                $(this).blur();
+              } else if (e.key === 'Escape') {
+                $(this).val(originalText).blur();
+              }
+            });
+          $text.replaceWith($input);
+          $input.focus().select();
+        });
+
+      // Delete button
+      const $deleteBtn = $('<button class="delete-btn">')
+        .text('Delete')
+        .on('click', function () {
+          list_item_delete(index, $container);
+        });
+
+      $li.append($checkbox, $text, $deleteBtn);
+      return $li;
+    }
+
+    function list_checkbox_change(index, $container) {
+      const listContent = $container.data('list-content');
+      // Toggle status: "done" <-> "todo"
+      listContent[index][1] = listContent[index][1] === 'done' ? 'todo' : 'done';
+
+      // Update checkbox state and text styling without full re-render
+      const $items = $container.find('.task-item');
+      const $item = $items.eq(index);
+      const $checkbox = $item.find('input[type="checkbox"]');
+      const $text = $item.find('.task-text');
+
+      $checkbox.prop('checked', listContent[index][1] === 'done');
+      $text.toggleClass('completed', listContent[index][1] === 'done');
+
+      // Re-apply filter to show/hide based on new status
+      list_visually_filter($container, $container.data('filter'));
+    }
+
+    function list_text_edit(index, new_text, $container) {
+      const listContent = $container.data('list-content');
+      // Update text, prevent empty
+      listContent[index][0] = new_text.trim() || listContent[index][0];
+    }
+
+    function list_item_delete(index, $container) {
+      const listContent = $container.data('list-content');
+      // Remove from data
+      listContent.splice(index, 1);
+      // Manual re-render
+      list_render($container);
+    }
+
+    function list_visually_filter($container, criterion) {
+      // Store current filter (like arkenidar's main_node.filter_criterion)
+      $container.data('filter', criterion);
+      const listContent = $container.data('list-content');
+
+      // Update button styles
+      $container.find('.filter-buttons button').removeClass('view-selected');
+      const buttonText = criterion === 'all' ? 'All' :
+        criterion === 'todo' ? 'To Do' : 'Done';
+      $container.find('.filter-buttons button').filter(function () {
+        return $(this).text() === buttonText;
+      }).addClass('view-selected');
+
+      // Show/hide items (arkenidar's approach: visual filtering, not re-rendering)
+      $container.find('.task-item').each(function (index) {
+        const status = listContent[index] ? listContent[index][1] : null;
+        if (!status) return; // Empty state item
+
+        const shouldShow = criterion === 'all' ||
+          (criterion === 'todo' && status === 'todo') ||
+          (criterion === 'done' && status === 'done');
+
+        $(this).css('display', shouldShow ? 'flex' : 'none');
+      });
+
+      // Handle empty state visibility
+      const $emptyState = $container.find('.empty-state');
+      if ($emptyState.length) {
+        const visibleCount = $container.find('.task-item').filter(function () {
+          return $(this).css('display') !== 'none' && !$(this).hasClass('empty-state');
+        }).length;
+        $emptyState.css('display', listContent.length === 0 ? 'block' : 'none');
+      }
+    }
+
+    function list_add_task($container, text) {
+      if (text && text.trim()) {
+        const listContent = $container.data('list-content');
+        // Add new task with "todo" status
+        listContent.push([text.trim(), 'todo']);
+        // Manual re-render
+        list_render($container);
+        // Clear input
+        $container.find('.add-task input').val('');
+      }
+    }
+
+    // Initialize on document ready
+    $(document).ready(function () {
+      const initial_data = [
+        ["Learn jQuery basics", "done"],
+        ["Build tasklist with manual reactivity", "todo"],
+        ["Convert to vanilla JS", "todo"]
+      ];
+
+      list_setup($('#task-list-container'), initial_data);
+    });
+  </script>
+
+  <script src="show-source.js"></script>
+</body>
+
+</html>

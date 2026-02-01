@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vanilla JS TaskList</title>
+  <link rel="stylesheet" href="css/vanilla-js.css">
+</head>
+
+<body>
+  <h1>TaskList App (Vanilla JS)</h1>
+  <p style="text-align: center; margin-bottom: 15px; color: #666;">
+    <small>
+      Compare:
+      <a href="index.html" style="color: #4A90E2;">Alpine.js</a> |
+      <a href="jquery.html" style="color: #4A90E2;">jQuery Slim</a> |
+      <a href="README.md" style="color: #4A90E2;">Docs</a>
+    </small>
+  </p>
+  <div id="task-list-container"></div>
+
+  <script>
+    // Manual Reactivity Pattern (arkenidar's approach)
+    // Data stored directly on DOM node
+    // Explicit function calls trigger updates
+
+    function list_setup(container, list_content) {
+      // Store data on container (arkenidar's pattern: main_node.data_content)
+      container.data_content = list_content;
+      container.filter_criterion = 'all';
+
+      // Create filter buttons
+      const filterDiv = document.createElement('div');
+      filterDiv.className = 'filter-buttons';
+
+      const allBtn = document.createElement('button');
+      allBtn.textContent = 'All';
+      allBtn.addEventListener('click', () => list_visually_filter(container, 'all'));
+      filterDiv.appendChild(allBtn);
+
+      const todoBtn = document.createElement('button');
+      todoBtn.textContent = 'To Do';
+      todoBtn.addEventListener('click', () => list_visually_filter(container, 'todo'));
+      filterDiv.appendChild(todoBtn);
+
+      const doneBtn = document.createElement('button');
+      doneBtn.textContent = 'Done';
+      doneBtn.addEventListener('click', () => list_visually_filter(container, 'done'));
+      filterDiv.appendChild(doneBtn);
+
+      // Create add task section
+      const addDiv = document.createElement('div');
+      addDiv.className = 'add-task';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Add a new task...';
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          list_add_task(container, input.value);
+        }
+      });
+
+      const addBtn = document.createElement('button');
+      addBtn.textContent = 'Add';
+      addBtn.addEventListener('click', () => list_add_task(container, input.value));
+
+      addDiv.appendChild(input);
+      addDiv.appendChild(addBtn);
+
+      // Create list container
+      const list = document.createElement('ul');
+      list.className = 'task-list';
+
+      // Append all to container
+      container.appendChild(filterDiv);
+      container.appendChild(addDiv);
+      container.appendChild(list);
+
+      // Initial render
+      list_render(container);
+    }
+
+    function list_render(container) {
+      // Get data from container
+      const listContent = container.data_content;
+      const list = container.querySelector('.task-list');
+
+      // Clear list
+      list.innerHTML = '';
+
+      // Render each item
+      if (listContent.length === 0) {
+        const emptyLi = document.createElement('li');
+        emptyLi.className = 'empty-state';
+        emptyLi.textContent = 'No tasks to show';
+        list.appendChild(emptyLi);
+      } else {
+        listContent.forEach((item, index) => {
+          const li = list_item_create(item, index, container);
+          list.appendChild(li);
+        });
+      }
+
+      // Apply current filter
+      list_visually_filter(container, container.filter_criterion);
+    }
+
+    function list_item_create(item_data, index, container) {
+      const text = item_data[0];
+      const status = item_data[1]; // "done" or "todo"
+
+      const li = document.createElement('li');
+      li.className = 'task-item';
+
+      // Checkbox
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = status === 'done';
+      checkbox.addEventListener('change', () => {
+        list_checkbox_change(index, container);
+      });
+
+      // Text span (click to edit)
+      const textSpan = document.createElement('span');
+      textSpan.className = 'task-text';
+      textSpan.textContent = text;
+      if (status === 'done') {
+        textSpan.classList.add('completed');
+      }
+
+      textSpan.addEventListener('click', () => {
+        const originalText = text;
+        const input = document.createElement('input');
+        input.className = 'task-edit-input';
+        input.value = text;
+
+        input.addEventListener('blur', () => {
+          list_text_edit(index, input.value, container);
+          list_render(container);
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            input.blur();
+          } else if (e.key === 'Escape') {
+            input.value = originalText;
+            input.blur();
+          }
+        });
+
+        textSpan.replaceWith(input);
+        input.focus();
+        input.select();
+      });
+
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', () => {
+        list_item_delete(index, container);
+      });
+
+      li.appendChild(checkbox);
+      li.appendChild(textSpan);
+      li.appendChild(deleteBtn);
+
+      return li;
+    }
+
+    function list_checkbox_change(index, container) {
+      const listContent = container.data_content;
+      // Toggle status: "done" <-> "todo"
+      listContent[index][1] = listContent[index][1] === 'done' ? 'todo' : 'done';
+
+      // Update checkbox state and text styling without full re-render
+      const items = container.querySelectorAll('.task-item');
+      const item = items[index];
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      const textSpan = item.querySelector('.task-text');
+
+      checkbox.checked = listContent[index][1] === 'done';
+      if (listContent[index][1] === 'done') {
+        textSpan.classList.add('completed');
+      } else {
+        textSpan.classList.remove('completed');
+      }
+
+      // Re-apply filter to show/hide based on new status (arkenidar's approach)
+      list_visually_filter(container, container.filter_criterion);
+    }
+
+    function list_text_edit(index, new_text, container) {
+      const listContent = container.data_content;
+      // Update text, prevent empty
+      listContent[index][0] = new_text.trim() || listContent[index][0];
+    }
+
+    function list_item_delete(index, container) {
+      const listContent = container.data_content;
+      // Remove from data
+      listContent.splice(index, 1);
+      // Manual re-render
+      list_render(container);
+    }
+
+    function list_visually_filter(container, criterion) {
+      // Store current filter (arkenidar's pattern: main_node.filter_criterion)
+      container.filter_criterion = criterion;
+      const listContent = container.data_content;
+
+      // Update button styles
+      const buttons = container.querySelectorAll('.filter-buttons button');
+      buttons.forEach(btn => btn.classList.remove('view-selected'));
+
+      const buttonText = criterion === 'all' ? 'All' :
+        criterion === 'todo' ? 'To Do' : 'Done';
+
+      buttons.forEach(btn => {
+        if (btn.textContent === buttonText) {
+          btn.classList.add('view-selected');
+        }
+      });
+
+      // Show/hide items (arkenidar's approach: visual filtering, not re-rendering)
+      const items = container.querySelectorAll('.task-item');
+      items.forEach((item, index) => {
+        const status = listContent[index] ? listContent[index][1] : null;
+        if (!status) return; // Empty state item
+
+        const shouldShow = criterion === 'all' ||
+          (criterion === 'todo' && status === 'todo') ||
+          (criterion === 'done' && status === 'done');
+
+        item.style.display = shouldShow ? 'flex' : 'none';
+      });
+
+      // Handle empty state visibility
+      const emptyState = container.querySelector('.empty-state');
+      if (emptyState) {
+        const visibleCount = Array.from(items).filter(item => {
+          return item.style.display !== 'none' && !item.classList.contains('empty-state');
+        }).length;
+        emptyState.style.display = listContent.length === 0 ? 'block' : 'none';
+      }
+    }
+
+    function list_add_task(container, text) {
+      if (text && text.trim()) {
+        const listContent = container.data_content;
+        // Add new task with "todo" status
+        listContent.push([text.trim(), 'todo']);
+        // Manual re-render
+        list_render(container);
+        // Clear input
+        const input = container.querySelector('.add-task input');
+        input.value = '';
+      }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const initial_data = [
+        ["Learn vanilla JS basics", "done"],
+        ["Build tasklist with manual reactivity", "todo"],
+        ["Compare with jQuery version", "todo"]
+      ];
+
+      const container = document.getElementById('task-list-container');
+      list_setup(container, initial_data);
+    });
+  </script>
+
+  <script src="show-source.js"></script>
+</body>
+
+</html>
