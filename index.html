@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpine.js TaskList</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    /* Reset & Base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #f8f9fa;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    /* Add Task Section */
+    .add-task {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .add-task input {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .add-task input:focus {
+      outline: none;
+      border-color: #4A90E2;
+    }
+
+    .add-task button {
+      padding: 10px 20px;
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .add-task button:hover {
+      background-color: #357ABD;
+    }
+
+    .add-task button:active {
+      background-color: #2868A6;
+    }
+
+    /* Filter Buttons */
+    .filter-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .filter-buttons button {
+      padding: 8px 16px;
+      border: 2px solid #ccc;
+      background: white;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .filter-buttons button:hover {
+      background-color: #f5f5f5;
+    }
+
+    .view-selected {
+      border: 4px solid red !important;
+    }
+
+    /* Task List */
+    .task-list {
+      list-style: none;
+      background: white;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .task-item:last-child {
+      border-bottom: none;
+    }
+
+    .task-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .task-text {
+      flex: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 3px;
+      transition: background-color 0.2s;
+    }
+
+    .task-text:hover {
+      background-color: #f5f5f5;
+    }
+
+    .task-text.completed {
+      text-decoration: line-through;
+      color: #999;
+    }
+
+    .task-edit-input {
+      flex: 1;
+      padding: 4px 8px;
+      border: 2px solid #4A90E2;
+      border-radius: 3px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .task-edit-input:focus {
+      outline: none;
+      border-color: #357ABD;
+    }
+
+    .delete-btn {
+      padding: 6px 12px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
+
+    .delete-btn:active {
+      background-color: #bd2130;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+  <div x-data="taskListApp()">
+    <!-- Header -->
+    <h1>TaskList App</h1>
+
+    <!-- Add Task Section -->
+    <div class="add-task">
+      <input type="text" x-model="newTaskText" @keydown.enter="addTask()" placeholder="Add a new task...">
+      <button @click="addTask()">Add</button>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="filter-buttons">
+      <button @click="filter = 'all'" :class="{ 'view-selected': filter === 'all' }">
+        All
+      </button>
+      <button @click="filter = 'todo'" :class="{ 'view-selected': filter === 'todo' }">
+        To Do
+      </button>
+      <button @click="filter = 'done'" :class="{ 'view-selected': filter === 'done' }">
+        Done
+      </button>
+    </div>
+
+    <!-- Task List -->
+    <ul class="task-list">
+      <template x-for="task in filteredTasks" :key="task.id">
+        <li class="task-item">
+          <!-- Checkbox -->
+          <input type="checkbox" x-model="task.completed">
+
+          <!-- View Mode -->
+          <span x-show="!task.editing" @click="startEdit(task.id)" x-text="task.text"
+            :class="{ 'completed': task.completed }" class="task-text">
+          </span>
+
+          <!-- Edit Mode -->
+          <input x-show="task.editing" x-model="task.text" @keydown.enter="saveEdit(task.id)"
+            @keydown.escape="cancelEdit(task.id)" @blur="saveEdit(task.id)" x-ref="'input-' + task.id"
+            class="task-edit-input" type="text">
+
+          <!-- Delete Button -->
+          <button @click="deleteTask(task.id)" class="delete-btn">
+            Delete
+          </button>
+        </li>
+      </template>
+
+      <!-- Empty State -->
+      <li x-show="filteredTasks.length === 0" class="empty-state">
+        No tasks to show
+      </li>
+    </ul>
+  </div>
+
+  <script>
+    function taskListApp() {
+      return {
+        tasks: [
+          { id: 1, text: 'Learn Alpine.js basics', completed: false, editing: false },
+          { id: 2, text: 'Build a tasklist app', completed: true, editing: false },
+          { id: 3, text: 'Deploy to production', completed: false, editing: false }
+        ],
+        filter: 'all',
+        nextId: 4,
+        newTaskText: '',
+
+        // Add new task
+        addTask() {
+          if (this.newTaskText.trim()) {
+            this.tasks.push({
+              id: this.nextId++,
+              text: this.newTaskText.trim(),
+              completed: false,
+              editing: false
+            });
+            this.newTaskText = '';
+          }
+        },
+
+        // Delete task
+        deleteTask(id) {
+          this.tasks = this.tasks.filter(t => t.id !== id);
+        },
+
+        // Start editing task
+        startEdit(id) {
+          const task = this.tasks.find(t => t.id === id);
+          if (task) {
+            // Store original text for cancel functionality
+            task.originalText = task.text;
+            task.editing = true;
+
+            // Focus input on next tick
+            this.$nextTick(() => {
+              const input = this.$refs['input-' + id];
+              if (input) {
+                input.focus();
+                input.select();
+              }
+            });
+          }
+        },
+
+        // Save edit
+        saveEdit(id) {
+          const task = this.tasks.find(t => t.id === id);
+          if (task) {
+            // Prevent empty tasks
+            if (!task.text.trim()) {
+              task.text = task.originalText || 'Untitled task';
+            }
+            task.editing = false;
+            delete task.originalText;
+          }
+        },
+
+        // Cancel edit
+        cancelEdit(id) {
+          const task = this.tasks.find(t => t.id === id);
+          if (task && task.originalText !== undefined) {
+            task.text = task.originalText;
+            task.editing = false;
+            delete task.originalText;
+          }
+        },
+
+        // Computed filtered tasks
+        get filteredTasks() {
+          if (this.filter === 'todo') {
+            return this.tasks.filter(t => !t.completed);
+          }
+          if (this.filter === 'done') {
+            return this.tasks.filter(t => t.completed);
+          }
+          return this.tasks;
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>
