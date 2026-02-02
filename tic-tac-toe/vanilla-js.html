@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe (Vanilla JS)</title>
+  <link rel="stylesheet" href="css/vanilla-js.css">
+</head>
+
+<body>
+  <h1>Tic-Tac-Toe (Vanilla JS)</h1>
+  <p style="text-align: center; margin-bottom: 15px; color: #666;">
+    <small>
+      Compare:
+      <a href="index.html" style="color: #4A90E2;">Alpine.js</a> |
+      <a href="jquery.html" style="color: #4A90E2;">jQuery Slim</a> |
+      <a href="../index.html" style="color: #4A90E2;">TaskList</a>
+    </small>
+  </p>
+  <div id="game-container"></div>
+
+  <script>
+    // Manual Reactivity Pattern (arkenidar's approach)
+    // Data stored directly on DOM node
+    // Explicit function calls trigger updates
+
+    function grid_copy(grid) {
+      return grid.map(row => [...row]);
+    }
+
+    function calculate_winner(grid) {
+      const lines = [
+        [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]],
+        [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]],
+        [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]]
+      ];
+      for (const line of lines) {
+        const [a, b, c] = line;
+        const va = grid[a[0]][a[1]];
+        if (va && va === grid[b[0]][b[1]] && va === grid[c[0]][c[1]]) {
+          return va;
+        }
+      }
+      return null;
+    }
+
+    function game_setup(container) {
+      const initialGrid = [['','',''], ['','',''], ['','','']];
+
+      container.game_data = {
+        grid: initialGrid,
+        currentPlayer: 'X',
+        history: [{ grid: grid_copy(initialGrid), currentPlayer: 'X' }],
+        currentPhase: 0
+      };
+
+      // Create status
+      const status = document.createElement('div');
+      status.className = 'status';
+
+      // Create grid table
+      const table = document.createElement('table');
+      table.className = 'game-grid';
+
+      // Create history container
+      const historyDiv = document.createElement('div');
+      historyDiv.className = 'history-buttons';
+
+      container.appendChild(status);
+      container.appendChild(table);
+      container.appendChild(historyDiv);
+
+      game_render(container);
+    }
+
+    function game_render(container) {
+      const data = container.game_data;
+      const grid = data.grid;
+      const winner = calculate_winner(grid);
+      const isDraw = !winner && grid.every(row => row.every(cell => cell !== ''));
+
+      // Update status
+      const status = container.querySelector('.status');
+      if (winner) {
+        status.textContent = 'Winner: ' + winner;
+      } else if (isDraw) {
+        status.textContent = 'Draw!';
+      } else {
+        status.textContent = 'Current player: ' + data.currentPlayer;
+      }
+
+      // Rebuild grid
+      const table = container.querySelector('.game-grid');
+      table.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement('tr');
+        for (let j = 0; j < 3; j++) {
+          const td = document.createElement('td');
+          td.textContent = grid[i][j];
+          if (grid[i][j] === 'X') td.classList.add('cell-x');
+          if (grid[i][j] === 'O') td.classList.add('cell-o');
+          td.addEventListener('click', () => game_click(container, i, j));
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+
+      // Rebuild history buttons
+      const historyDiv = container.querySelector('.history-buttons');
+      historyDiv.innerHTML = '';
+      for (let m = 0; m < data.history.length; m++) {
+        const btn = document.createElement('button');
+        btn.textContent = m === 0 ? 'Start' : 'Move ' + m;
+        if (m === data.currentPhase) btn.classList.add('phase-selected');
+        btn.addEventListener('click', () => game_go_to_phase(container, m));
+        historyDiv.appendChild(btn);
+      }
+    }
+
+    function game_click(container, row, col) {
+      const data = container.game_data;
+      const winner = calculate_winner(data.grid);
+      const isDraw = !winner && data.grid.every(r => r.every(c => c !== ''));
+
+      if (data.grid[row][col] !== '' || winner || isDraw) return;
+
+      data.grid[row][col] = data.currentPlayer;
+      data.currentPlayer = data.currentPlayer === 'X' ? 'O' : 'X';
+
+      data.history = data.history.slice(0, data.currentPhase + 1);
+      data.history.push({ grid: grid_copy(data.grid), currentPlayer: data.currentPlayer });
+      data.currentPhase = data.history.length - 1;
+
+      game_render(container);
+    }
+
+    function game_go_to_phase(container, index) {
+      const data = container.game_data;
+      const snapshot = data.history[index];
+
+      data.grid = grid_copy(snapshot.grid);
+      data.currentPlayer = snapshot.currentPlayer;
+      data.currentPhase = index;
+
+      game_render(container);
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      const container = document.getElementById('game-container');
+      game_setup(container);
+    });
+  </script>
+
+  <script src="show-source.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe (jQuery)</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+  <link rel="stylesheet" href="css/jquery.css">
+</head>
+
+<body>
+  <h1>Tic-Tac-Toe (jQuery Slim)</h1>
+  <p style="text-align: center; margin-bottom: 15px; color: #666;">
+    <small>
+      Compare:
+      <a href="index.html" style="color: #4A90E2;">Alpine.js</a> |
+      <a href="vanilla-js.html" style="color: #4A90E2;">Vanilla JS</a> |
+      <a href="../index.html" style="color: #4A90E2;">TaskList</a>
+    </small>
+  </p>
+  <div id="game-container"></div>
+
+  <script>
+    // Manual Reactivity Pattern (inspired by arkenidar's list-app.js)
+    // Data stored in DOM element using jQuery .data()
+    // Explicit function calls trigger updates
+
+    function grid_copy(grid) {
+      return grid.map(row => [...row]);
+    }
+
+    function calculate_winner(grid) {
+      const lines = [
+        [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]],
+        [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]],
+        [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]]
+      ];
+      for (const line of lines) {
+        const [a, b, c] = line;
+        const va = grid[a[0]][a[1]];
+        if (va && va === grid[b[0]][b[1]] && va === grid[c[0]][c[1]]) {
+          return va;
+        }
+      }
+      return null;
+    }
+
+    function game_setup($container) {
+      const initialGrid = [['','',''], ['','',''], ['','','']];
+
+      $container.data('grid', initialGrid);
+      $container.data('current-player', 'X');
+      $container.data('history', [{ grid: grid_copy(initialGrid), currentPlayer: 'X' }]);
+      $container.data('current-phase', 0);
+
+      // Create status
+      const $status = $('<div class="status">');
+      // Create grid table
+      const $table = $('<table class="game-grid">');
+      // Create history container
+      const $history = $('<div class="history-buttons">');
+
+      $container.append($status, $table, $history);
+      game_render($container);
+    }
+
+    function game_render($container) {
+      const grid = $container.data('grid');
+      const currentPlayer = $container.data('current-player');
+      const history = $container.data('history');
+      const currentPhase = $container.data('current-phase');
+      const winner = calculate_winner(grid);
+      const isDraw = !winner && grid.every(row => row.every(cell => cell !== ''));
+
+      // Update status
+      const $status = $container.find('.status');
+      if (winner) {
+        $status.text('Winner: ' + winner);
+      } else if (isDraw) {
+        $status.text('Draw!');
+      } else {
+        $status.text('Current player: ' + currentPlayer);
+      }
+
+      // Rebuild grid
+      const $table = $container.find('.game-grid');
+      $table.empty();
+      for (let i = 0; i < 3; i++) {
+        const $tr = $('<tr>');
+        for (let j = 0; j < 3; j++) {
+          const $td = $('<td>')
+            .text(grid[i][j])
+            .on('click', function () {
+              game_click($container, i, j);
+            });
+          if (grid[i][j] === 'X') $td.addClass('cell-x');
+          if (grid[i][j] === 'O') $td.addClass('cell-o');
+          $tr.append($td);
+        }
+        $table.append($tr);
+      }
+
+      // Rebuild history buttons
+      const $history = $container.find('.history-buttons');
+      $history.empty();
+      for (let m = 0; m < history.length; m++) {
+        const $btn = $('<button>')
+          .text(m === 0 ? 'Start' : 'Move ' + m)
+          .on('click', function () {
+            game_go_to_phase($container, m);
+          });
+        if (m === currentPhase) $btn.addClass('phase-selected');
+        $history.append($btn);
+      }
+    }
+
+    function game_click($container, row, col) {
+      const grid = $container.data('grid');
+      const currentPlayer = $container.data('current-player');
+      const winner = calculate_winner(grid);
+      const isDraw = !winner && grid.every(r => r.every(c => c !== ''));
+
+      if (grid[row][col] !== '' || winner || isDraw) return;
+
+      grid[row][col] = currentPlayer;
+      const nextPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      $container.data('current-player', nextPlayer);
+
+      const currentPhase = $container.data('current-phase');
+      let history = $container.data('history');
+      history = history.slice(0, currentPhase + 1);
+      history.push({ grid: grid_copy(grid), currentPlayer: nextPlayer });
+      $container.data('history', history);
+      $container.data('current-phase', history.length - 1);
+
+      game_render($container);
+    }
+
+    function game_go_to_phase($container, index) {
+      const history = $container.data('history');
+      const snapshot = history[index];
+
+      $container.data('grid', grid_copy(snapshot.grid));
+      $container.data('current-player', snapshot.currentPlayer);
+      $container.data('current-phase', index);
+
+      game_render($container);
+    }
+
+    // Initialize on document ready
+    $(document).ready(function () {
+      game_setup($('#game-container'));
+    });
+  </script>
+
+  <script src="show-source.js"></script>
+</body>
+
+</html>

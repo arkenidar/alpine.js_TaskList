@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe (Alpine.js)</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="css/alpine.css">
+</head>
+
+<body>
+  <h1>Tic-Tac-Toe (Alpine.js)</h1>
+  <p style="text-align: center; margin-bottom: 15px; color: #666;">
+    <small>
+      Compare:
+      <a href="jquery.html" style="color: #4A90E2;">jQuery</a> |
+      <a href="vanilla-js.html" style="color: #4A90E2;">Vanilla JS</a> |
+      <a href="../index.html" style="color: #4A90E2;">TaskList</a>
+    </small>
+  </p>
+
+  <div x-data="ticTacToeApp()" x-init="init()">
+    <div class="status" x-text="statusMessage"></div>
+
+    <table class="game-grid">
+      <template x-for="(row, ri) in grid" :key="ri">
+        <tr>
+          <template x-for="(cell, ci) in row" :key="ci">
+            <td @click="makeMove(ri, ci)"
+                :class="{ 'cell-x': cell === 'X', 'cell-o': cell === 'O' }"
+                x-text="cell">
+            </td>
+          </template>
+        </tr>
+      </template>
+    </table>
+
+    <div class="history-buttons">
+      <template x-for="(snapshot, index) in history" :key="index">
+        <button @click="goToPhase(index)"
+                :class="{ 'phase-selected': currentPhase === index }"
+                x-text="index === 0 ? 'Start' : 'Move ' + index">
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <script>
+    function ticTacToeApp() {
+      return {
+        grid: [
+          ['', '', ''],
+          ['', '', ''],
+          ['', '', '']
+        ],
+        currentPlayer: 'X',
+        history: [],
+        currentPhase: 0,
+
+        init() {
+          this.history = [{ grid: this.copyGrid(this.grid), currentPlayer: this.currentPlayer }];
+        },
+
+        copyGrid(g) {
+          return g.map(row => [...row]);
+        },
+
+        makeMove(row, col) {
+          if (this.grid[row][col] !== '' || this.winner || this.isDraw) return;
+
+          this.grid[row][col] = this.currentPlayer;
+          this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+
+          this.history = this.history.slice(0, this.currentPhase + 1);
+          this.history.push({ grid: this.copyGrid(this.grid), currentPlayer: this.currentPlayer });
+          this.currentPhase = this.history.length - 1;
+        },
+
+        goToPhase(index) {
+          this.currentPhase = index;
+          const snapshot = this.history[index];
+          this.grid = this.copyGrid(snapshot.grid);
+          this.currentPlayer = snapshot.currentPlayer;
+        },
+
+        get winner() {
+          const lines = [
+            [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]],
+            [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]],
+            [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]]
+          ];
+          for (const line of lines) {
+            const [a, b, c] = line;
+            const va = this.grid[a[0]][a[1]];
+            if (va && va === this.grid[b[0]][b[1]] && va === this.grid[c[0]][c[1]]) {
+              return va;
+            }
+          }
+          return null;
+        },
+
+        get isDraw() {
+          if (this.winner) return false;
+          return this.grid.every(row => row.every(cell => cell !== ''));
+        },
+
+        get statusMessage() {
+          if (this.winner) return 'Winner: ' + this.winner;
+          if (this.isDraw) return 'Draw!';
+          return 'Current player: ' + this.currentPlayer;
+        }
+      }
+    }
+  </script>
+
+  <script src="show-source.js"></script>
+</body>
+
+</html>
