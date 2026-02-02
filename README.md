@@ -1,8 +1,19 @@
-# TaskList Implementation Journey
+# JS Framework Comparison
 
-A concrete exploration of different approaches to building a tasklist application, comparing reactivity patterns and framework choices.
+A concrete exploration of different JavaScript approaches by building the same application three ways: Alpine.js, jQuery Slim, and Vanilla JS.
 
-## The Journey
+## Two Experiments
+
+| App | Alpine.js | jQuery | Vanilla JS | Description |
+|-----|-----------|--------|------------|-------------|
+| **[TaskList](index.html)** | [Alpine](index.html) | [jQuery](jquery.html) | [Vanilla](vanilla-js.html) | Add, delete, edit, filter tasks |
+| **[Tic-Tac-Toe](tic-tac-toe/index.html)** | [Alpine](tic-tac-toe/index.html) | [jQuery](tic-tac-toe/jquery.html) | [Vanilla](tic-tac-toe/vanilla-js.html) | Game grid, winner detection, move history |
+
+Each app is implemented three times with identical functionality, comparing automatic reactivity (Alpine.js) vs manual reactivity (jQuery, Vanilla JS).
+
+---
+
+## TaskList
 
 This repository documents a hands-on evaluation of three different approaches to building the same tasklist application:
 
@@ -300,18 +311,19 @@ All three versions implement identical functionality:
 
 | Feature | Alpine.js | jQuery | Vanilla JS |
 |---------|-----------|--------|------------|
-| **Add tasks** | ✅ | ✅ | 🔄 |
-| **Delete tasks** | ✅ | ✅ | 🔄 |
-| **Toggle completion** | ✅ | ✅ | 🔄 |
-| **Inline editing** | ✅ | ✅ | 🔄 |
-| **Filter (All/To Do/Done)** | ✅ | ✅ | 🔄 |
-| **Keyboard shortcuts** | ✅ | ✅ | 🔄 |
-| **Empty state** | ✅ | ✅ | 🔄 |
+| **Add tasks** | ✅ | ✅ | ✅ |
+| **Delete tasks** | ✅ | ✅ | ✅ |
+| **Toggle completion** | ✅ | ✅ | ✅ |
+| **Inline editing** | ✅ | ✅ | ✅ |
+| **Filter (All/To Do/Done)** | ✅ | ✅ | ✅ |
+| **Keyboard shortcuts** | ✅ | ✅ | ✅ |
+| **Empty state** | ✅ | ✅ | ✅ |
 
 ### User Experience Features
 
 - **Click to edit**: Click task text to edit inline
 - **Enter saves**: Press Enter to save changes
+- **Click outside saves**: Clicking outside the edit input accepts the change (blur)
 - **Escape cancels**: Press Esc to discard changes
 - **Auto-focus**: Input auto-focuses when editing
 - **Text selection**: Text auto-selects for easy replacement
