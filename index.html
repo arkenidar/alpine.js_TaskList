@@ -56,8 +56,8 @@
 
           <!-- Edit Mode -->
           <input x-show="task.editing" x-model="task.text" @keydown.enter="saveEdit(task.id)"
-            @keydown.escape="cancelEdit(task.id)" @blur="saveEdit(task.id)" x-ref="'input-' + task.id"
-            class="task-edit-input" type="text">
+            @keydown.escape="cancelEdit(task.id)" @blur="saveEdit(task.id)" @click.outside="saveEdit(task.id)"
+            x-ref="'input-' + task.id" class="task-edit-input" type="text">
 
           <!-- Delete Button -->
           <button @click="deleteTask(task.id)" class="delete-btn">
